@@ -1,0 +1,142 @@
+<div class="page-container">
+  <div class="page-header">
+    <h1>Users</h1>
+    <button type="button" class="primary-button" (click)="toggleAddModal(true)">Add User</button>
+  </div>
+
+  <div *ngIf="isLoading()" class="loading">Loading users...</div>
+  <div *ngIf="error()" class="error">{{ error() }}</div>
+
+  <div *ngIf="!isLoading() && users().length === 0" class="empty-state">
+    No users found. Add a user to get started.
+  </div>
+
+  <div class="table-container" *ngIf="!isLoading() && users().length > 0">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let user of users()">
+          <td>{{ user.id }}</td>
+          <td>{{ user.username }}</td>
+          <td>{{ user.email }}</td>
+          <td>
+            <span class="role-badge" [attr.data-role]="user.role">{{ getRoleName(user.role) }}</span>
+          </td>
+          <td class="actions">
+            <button type="button" class="icon-button edit" (click)="openEditModal(user)" title="Edit">✏️</button>
+            <button type="button" class="icon-button delete" (click)="confirmDelete(user.id)" title="Delete">🗑️</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal-backdrop" *ngIf="addModalOpen()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add User</h3>
+      <button type="button" class="close-button" (click)="toggleAddModal(false)">×</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" [(ngModel)]="newUsername" placeholder="Enter username" />
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" [(ngModel)]="newEmail" placeholder="Enter email" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" [(ngModel)]="newPassword" placeholder="Enter password" />
+      </div>
+      <div class="form-group">
+        <label>Role</label>
+        <select [(ngModel)]="newRole">
+          <option value="0">Student</option>
+          <option value="1">Instructor</option>
+          <option value="2">Admin</option>
+        </select>
+      </div>
+
+      <div *ngIf="submitError()" class="form-error">{{ submitError() }}</div>
+      <div *ngIf="submitMessage()" class="form-success">{{ submitMessage() }}</div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="secondary-button" (click)="toggleAddModal(false)" [disabled]="isSubmitting()">Cancel</button>
+      <button type="button" class="primary-button" (click)="submitUser()" [disabled]="isSubmitting()">
+        {{ isSubmitting() ? 'Creating...' : 'Create' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal-backdrop" *ngIf="editModalOpen()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Edit User</h3>
+      <button type="button" class="close-button" (click)="toggleEditModal(false)">×</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" [(ngModel)]="editUsername" placeholder="Enter username" />
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" [(ngModel)]="editEmail" placeholder="Enter email" />
+      </div>
+      <div class="form-group">
+        <label>Role</label>
+        <select [(ngModel)]="editRole">
+          <option value="0">Student</option>
+          <option value="1">Instructor</option>
+          <option value="2">Admin</option>
+        </select>
+      </div>
+
+      <div *ngIf="editError()" class="form-error">{{ editError() }}</div>
+      <div *ngIf="editMessage()" class="form-success">{{ editMessage() }}</div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="secondary-button" (click)="toggleEditModal(false)" [disabled]="isEditing()">Cancel</button>
+      <button type="button" class="primary-button" (click)="updateUser()" [disabled]="isEditing()">
+        {{ isEditing() ? 'Updating...' : 'Update' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal-backdrop" *ngIf="deleteModalOpen()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Confirm Delete</h3>
+      <button type="button" class="close-button" (click)="toggleDeleteModal(false)">×</button>
+    </div>
+
+    <div class="modal-body">
+      <p>Are you sure you want to delete this user? This action cannot be undone.</p>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="secondary-button" (click)="toggleDeleteModal(false)">Cancel</button>
+      <button type="button" class="danger-button" (click)="deleteUser()">Delete</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,109 @@
+<div class="page-container">
+  <div class="page-header">
+    <h1>Courses</h1>
+    <button type="button" class="primary-button" (click)="toggleAddModal(true)">Add Course</button>
+  </div>
+
+  <div *ngIf="isLoading()" class="loading">Loading courses...</div>
+  <div *ngIf="error()" class="error">{{ error() }}</div>
+
+  <div *ngIf="!isLoading() && courses().length === 0" class="empty-state">
+    No courses found. Add a course to get started.
+  </div>
+
+  <div class="table-container" *ngIf="!isLoading() && courses().length > 0">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Title</th>
+          <th>Description</th>
+          <th>Instructor ID</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let course of courses()">
+          <td>{{ course.id }}</td>
+          <td>{{ course.title }}</td>
+          <td>{{ course.description }}</td>
+          <td>{{ course.instructorId }}</td>
+          <td class="actions">
+            <button type="button" class="icon-button edit" (click)="openEditModal(course)" title="Edit">✏️</button>
+            <button type="button" class="icon-button delete" (click)="deleteCourse(course.id)" title="Delete">🗑️</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Course Modal -->
+<div class="modal-backdrop" *ngIf="addModalOpen()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Course</h3>
+      <button type="button" class="close-button" (click)="toggleAddModal(false)">×</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" [(ngModel)]="newCourseTitle" placeholder="Enter course title" />
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea [(ngModel)]="newCourseDescription" placeholder="Enter course description" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Instructor ID</label>
+        <input type="number" [(ngModel)]="newCourseInstructorId" placeholder="Enter instructor ID" />
+      </div>
+
+      <div *ngIf="submitError()" class="form-error">{{ submitError() }}</div>
+      <div *ngIf="submitMessage()" class="form-success">{{ submitMessage() }}</div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="secondary-button" (click)="toggleAddModal(false)" [disabled]="isSubmitting()">Cancel</button>
+      <button type="button" class="primary-button" (click)="submitCourse()" [disabled]="isSubmitting()">
+        {{ isSubmitting() ? 'Creating...' : 'Create' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Course Modal -->
+<div class="modal-backdrop" *ngIf="editModalOpen()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Edit Course</h3>
+      <button type="button" class="close-button" (click)="toggleEditModal(false)">×</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" [(ngModel)]="editTitle" placeholder="Enter course title" />
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea [(ngModel)]="editDescription" placeholder="Enter course description" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Instructor ID</label>
+        <input type="number" [(ngModel)]="editInstructorId" placeholder="Enter instructor ID" />
+      </div>
+
+      <div *ngIf="editError()" class="form-error">{{ editError() }}</div>
+      <div *ngIf="editMessage()" class="form-success">{{ editMessage() }}</div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="secondary-button" (click)="toggleEditModal(false)" [disabled]="isEditing()">Cancel</button>
+      <button type="button" class="primary-button" (click)="updateCourse()" [disabled]="isEditing()">
+        {{ isEditing() ? 'Updating...' : 'Update' }}
+      </button>
+    </div>
+  </div>
+</div>

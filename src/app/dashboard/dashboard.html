@@ -1,0 +1,220 @@
+<div class="grid">
+  <div class="card combined-card">
+    <div class="combined-content">
+      <div class="combined-section">
+        <div class="card-title">Students</div>
+        <div class="card-value">{{ totalStudents() }}</div>
+      </div>
+      <div class="combined-divider"></div>
+      <div class="combined-section">
+        <div class="card-title">Instructors</div>
+        <div class="card-value">{{ totalInstructors() }}</div>
+      </div>
+    </div>
+    <div class="card-actions">
+      <button type="button" class="primary-button" (click)="toggleUserModal(true)">Add user</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-content">
+      <div class="card-title">Courses</div>
+      <div class="card-value">{{ totalCourses() }}</div>
+    </div>
+    <div class="card-actions">
+      <button type="button" class="primary-button" (click)="toggleCourseModal(true)">Add course</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-content">
+      <div class="card-title">Enrollments</div>
+      <div class="card-value">{{ totalEnrollments() }}</div>
+    </div>
+    <div class="card-actions">
+      <button type="button" class="primary-button" (click)="toggleEnrollmentModal(true)">Add enrollment</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-content">
+      <div class="card-title">Assignments</div>
+      <div class="card-value">{{ totalAssignments() }}</div>
+    </div>
+    <div class="card-actions">
+      <button type="button" class="primary-button" (click)="toggleAssignmentModal(true)">Add assignment</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" *ngIf="loginModalOpen">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Admin Login</h3>
+      <button type="button" class="close-button" (click)="toggleLoginModal(false)">×</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" [(ngModel)]="loginUsername" placeholder="Enter admin username" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" [(ngModel)]="loginPassword" placeholder="Enter password" />
+      </div>
+
+      <div *ngIf="loginError" class="form-error">{{ loginError }}</div>
+      <div *ngIf="loginMessage" class="form-success">{{ loginMessage }}</div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="secondary-button" (click)="toggleLoginModal(false)" [disabled]="isLoggingIn">Cancel</button>
+      <button type="button" class="primary-button" (click)="submitLogin()" [disabled]="isLoggingIn">
+        {{ isLoggingIn ? 'Logging in...' : 'Login' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" *ngIf="userModalOpen">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add User</h3>
+      <button type="button" class="close-button" (click)="toggleUserModal(false)">×</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" [(ngModel)]="newUsername" placeholder="Enter username" />
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" [(ngModel)]="newEmail" placeholder="Enter email" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" [(ngModel)]="newPassword" placeholder="Enter password" />
+      </div>
+      <div class="form-group">
+        <label>Role</label>
+        <select [(ngModel)]="newRole">
+          <option value="0">Student</option>
+          <option value="1">Instructor</option>
+          <option value="2">Admin</option>
+        </select>
+        <small>0 = student, 1 = instructor, 2 = admin</small>
+      </div>
+
+      <div *ngIf="submitError" class="form-error">{{ submitError }}</div>
+      <div *ngIf="submitMessage" class="form-success">{{ submitMessage }}</div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="secondary-button" (click)="toggleUserModal(false)" [disabled]="isSubmitting">Cancel</button>
+      <button type="button" class="primary-button" (click)="submitNewUser()" [disabled]="isSubmitting">
+        {{ isSubmitting ? 'Creating...' : 'Create user' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" *ngIf="enrollmentModalOpen">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Enrollment</h3>
+      <button type="button" class="close-button" (click)="toggleEnrollmentModal(false)">×</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label>User ID</label>
+        <input type="number" [(ngModel)]="newEnrollmentUserId" placeholder="Enter user ID" />
+      </div>
+      <div class="form-group">
+        <label>Course ID</label>
+        <input type="number" [(ngModel)]="newEnrollmentCourseId" placeholder="Enter course ID" />
+      </div>
+
+      <div *ngIf="enrollmentSubmitError" class="form-error">{{ enrollmentSubmitError }}</div>
+      <div *ngIf="enrollmentSubmitMessage" class="form-success">{{ enrollmentSubmitMessage }}</div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="secondary-button" (click)="toggleEnrollmentModal(false)" [disabled]="isEnrollmentSubmitting">Cancel</button>
+      <button type="button" class="primary-button" (click)="submitNewEnrollment()" [disabled]="isEnrollmentSubmitting">
+        {{ isEnrollmentSubmitting ? 'Creating...' : 'Create enrollment' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" *ngIf="courseModalOpen">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Course</h3>
+      <button type="button" class="close-button" (click)="toggleCourseModal(false)">×</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" [(ngModel)]="newCourseTitle" placeholder="Enter course title" />
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea [(ngModel)]="newCourseDescription" placeholder="Enter course description"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Instructor ID</label>
+        <input type="number" [(ngModel)]="newCourseInstructorId" placeholder="Enter instructor ID" />
+      </div>
+
+      <div *ngIf="courseSubmitError" class="form-error">{{ courseSubmitError }}</div>
+      <div *ngIf="courseSubmitMessage" class="form-success">{{ courseSubmitMessage }}</div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="secondary-button" (click)="toggleCourseModal(false)" [disabled]="isCourseSubmitting">Cancel</button>
+      <button type="button" class="primary-button" (click)="submitNewCourse()" [disabled]="isCourseSubmitting">
+        {{ isCourseSubmitting ? 'Creating...' : 'Create course' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" *ngIf="assignmentModalOpen">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Assignment</h3>
+      <button type="button" class="close-button" (click)="toggleAssignmentModal(false)">×</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" [(ngModel)]="newAssignmentTitle" placeholder="Enter assignment title" />
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea [(ngModel)]="newAssignmentDescription" placeholder="Enter assignment description"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Due Date</label>
+        <input type="date" [(ngModel)]="newAssignmentDueDate" />
+      </div>
+      <div class="form-group">
+        <label>Course ID</label>
+        <input type="number" [(ngModel)]="newAssignmentCourseId" placeholder="Enter course ID" />
+      </div>
+
+      <div *ngIf="assignmentSubmitError" class="form-error">{{ assignmentSubmitError }}</div>
+      <div *ngIf="assignmentSubmitMessage" class="form-success">{{ assignmentSubmitMessage }}</div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="secondary-button" (click)="toggleAssignmentModal(false)" [disabled]="isAssignmentSubmitting">Cancel</button>
+      <button type="button" class="primary-button" (click)="submitNewAssignment()" [disabled]="isAssignmentSubmitting">
+        {{ isAssignmentSubmitting ? 'Creating...' : 'Create assignment' }}
+      </button>
+    </div>
+  </div>
+</div>
