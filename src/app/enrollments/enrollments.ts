@@ -59,6 +59,39 @@ export class Enrollments implements OnInit {
     });
   }
 
+  private getCurrentUser(): { id: number; role: number } | null {
+    const token = localStorage.getItem('jwtToken');
+    console.log('JWT Token:', token);
+    if (!token) return null;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      console.log('JWT Payload:', payload);
+      const roleString = payload.role || payload.userRole || '';
+      let role = 0;
+      if (roleString === 'Student' || roleString === '0') role = 0;
+      else if (roleString === 'Instructor' || roleString === '1') role = 1;
+      else if (roleString === 'Admin' || roleString === '2') role = 2;
+      return {
+        id: parseInt(payload.sub || payload.id || payload.userId || '0', 10),
+        role: role
+      };
+    } catch (e) {
+      console.error('Error decoding JWT:', e);
+      return null;
+    }
+  }
+
+  private getCurrentUserId(): number | null {
+    const currentUser = this.getCurrentUser();
+    return currentUser?.id ?? null;
+  }
+
+  canManageEnrollments(): boolean {
+    const currentUser = this.getCurrentUser();
+    return currentUser ? currentUser.role > 0 : false; // Only instructors (1) and admins (2) can manage enrollments
+  }
+
   constructor(private http: HttpClient) {}
 
   ngOnInit() {
@@ -69,6 +102,39 @@ export class Enrollments implements OnInit {
     this.isLoading.set(true);
     this.error.set('');
 
+    const currentUser = this.getCurrentUser();
+    console.log('Current user in loadEnrollments:', currentUser);
+
+    if (currentUser && currentUser.role === 0) {
+      console.log('Loading student enrollments');
+      this.loadStudentEnrollments(currentUser.id);
+    } else {
+      console.log('Loading admin enrollments');
+      this.loadAdminEnrollments();
+    }
+  }
+
+  private loadStudentEnrollments(userId: number) {
+    // Use the /my endpoint which returns full enrollments directly
+    this.http.get<Result<EnrollmentResponse[]>>(`${this.baseUrl}/Enrollment/my`, {
+      headers: this.getHeaders(),
+    }).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.enrollments.set(response.data);
+        } else {
+          this.enrollments.set([]);
+        }
+        this.isLoading.set(false);
+      },
+      error: (err) => {
+        this.error.set('Error loading enrollments: ' + (err.error?.message || err.message));
+        this.isLoading.set(false);
+      },
+    });
+  }
+
+  private loadAdminEnrollments() {
     this.http.get<Result<EnrollmentResponse[]>>(`${this.baseUrl}/Enrollment`, {
       headers: this.getHeaders(),
     }).subscribe({
@@ -100,6 +166,7 @@ export class Enrollments implements OnInit {
   }
 
   toggleAddModal(open?: boolean) {
+    if (!this.canManageEnrollments()) return;
     this.addModalOpen.set(open ?? !this.addModalOpen());
     this.submitError.set('');
     this.submitMessage.set('');
@@ -108,6 +175,11 @@ export class Enrollments implements OnInit {
   }
 
   submitEnrollment() {
+    if (!this.canManageEnrollments()) {
+      this.submitError.set('You do not have permission to create enrollments');
+      return;
+    }
+
     if (!this.newUserId) {
       this.submitError.set('User ID is required');
       return;
@@ -149,6 +221,7 @@ export class Enrollments implements OnInit {
   }
 
   openEditModal(enrollment: EnrollmentResponse) {
+    if (!this.canManageEnrollments()) return;
     this.editingEnrollment = enrollment;
     this.editUserId = enrollment.userId.toString();
     this.editCourseId = enrollment.courseId.toString();
@@ -208,6 +281,7 @@ export class Enrollments implements OnInit {
   }
 
   confirmDelete(id: number) {
+    if (!this.canManageEnrollments()) return;
     this.deletingEnrollmentId = id;
     this.deleteModalOpen.set(true);
   }

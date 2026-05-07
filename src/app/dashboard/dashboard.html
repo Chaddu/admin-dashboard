@@ -1,3 +1,26 @@
+<div class="dashboard-header">
+  <h1>Admin Dashboard</h1>
+  <p>Welcome back, Administrator! Manage your educational platform efficiently with real-time insights and quick actions.</p>
+  <div class="overview-stats">
+    <div class="stat-item">
+      <span class="stat-label">Total Users</span>
+      <span class="stat-value">{{ totalStudents() + totalInstructors() }}</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Active Courses</span>
+      <span class="stat-value">{{ totalCourses() }}</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Enrollments</span>
+      <span class="stat-value">{{ totalEnrollments() }}</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Assignments</span>
+      <span class="stat-value">{{ totalAssignments() }}</span>
+    </div>
+  </div>
+</div>
+
 <div class="grid">
   <div class="card combined-card">
     <div class="combined-content">
@@ -41,6 +64,22 @@
     <div class="card-actions">
       <button type="button" class="primary-button" (click)="toggleAssignmentModal(true)">Add assignment</button>
     </div>
+  </div>
+</div>
+
+<div class="dashboard-footer">
+  <div class="quick-tips">
+    <h2>Quick Tips</h2>
+    <ul>
+      <li>Use the sidebar to navigate between different sections of the admin panel.</li>
+      <li>Click on the "Add" buttons in the cards above to quickly create new entities.</li>
+      <li>Monitor the statistics cards to keep track of your platform's growth.</li>
+      <li>Remember to log out when you're done for security purposes.</li>
+    </ul>
+  </div>
+  <div class="recent-activity">
+    <h2>Recent Activity</h2>
+    <p>Activity feed will be implemented in future updates. Stay tuned!</p>
   </div>
 </div>
 

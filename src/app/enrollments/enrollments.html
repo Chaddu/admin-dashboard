@@ -1,7 +1,7 @@
 <div class="page-container">
   <div class="page-header">
     <h1>Enrollments</h1>
-    <button type="button" class="primary-button" (click)="toggleAddModal(true)">Add Enrollment</button>
+    <button type="button" class="primary-button" (click)="toggleAddModal(true)" *ngIf="canManageEnrollments()">Add Enrollment</button>
   </div>
 
   <div *ngIf="isLoading()" class="loading">Loading enrollments...</div>
@@ -19,7 +19,7 @@
           <th>User ID</th>
           <th>Course ID</th>
           <th>Enrolled At</th>
-          <th>Actions</th>
+          <th *ngIf="canManageEnrollments()">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -28,7 +28,7 @@
           <td>{{ enrollment.userId }}</td>
           <td>{{ enrollment.courseId }}</td>
           <td>{{ formatDate(enrollment.enrolledAt) }}</td>
-          <td class="actions">
+          <td class="actions" *ngIf="canManageEnrollments()">
             <button type="button" class="icon-button edit" (click)="openEditModal(enrollment)" title="Edit">✏️</button>
             <button type="button" class="icon-button delete" (click)="confirmDelete(enrollment.id)" title="Delete">🗑️</button>
           </td>

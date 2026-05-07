@@ -68,6 +68,32 @@ export class Users implements OnInit {
     });
   }
 
+  private getCurrentUser(): { id: number; role: number } | null {
+    const token = localStorage.getItem('jwtToken');
+    if (!token) return null;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const roleString = payload.role || payload.userRole || '';
+      let role = 0;
+      if (roleString === 'Student' || roleString === '0') role = 0;
+      else if (roleString === 'Instructor' || roleString === '1') role = 1;
+      else if (roleString === 'Admin' || roleString === '2') role = 2;
+      return {
+        id: parseInt(payload.sub || payload.id || payload.userId || '0', 10),
+        role: role
+      };
+    } catch (e) {
+      console.error('Error decoding JWT:', e);
+      return null;
+    }
+  }
+
+  canManageUsers(): boolean {
+    const currentUser = this.getCurrentUser();
+    return currentUser ? currentUser.role > 0 : false; // Only instructors (1) and admins (2) can manage users
+  }
+
   constructor(private http: HttpClient) {}
 
   ngOnInit() {
@@ -78,6 +104,37 @@ export class Users implements OnInit {
     this.isLoading.set(true);
     this.error.set('');
 
+    const currentUser = this.getCurrentUser();
+
+    if (currentUser && currentUser.role === 0) {
+      // For students, load only their own profile
+      this.loadStudentProfile(currentUser.id);
+    } else {
+      // For admins/instructors, load all users
+      this.loadAllUsers();
+    }
+  }
+
+  private loadStudentProfile(userId: number) {
+    this.http.get<Result<UserResponse>>(`${this.baseUrl}/User/my`, {
+      headers: this.getHeaders(),
+    }).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.users.set([response.data]);
+        } else {
+          this.users.set([]);
+        }
+        this.isLoading.set(false);
+      },
+      error: (err) => {
+        this.error.set('Error loading user: ' + (err.error?.message || err.message));
+        this.isLoading.set(false);
+      },
+    });
+  }
+
+  private loadAllUsers() {
     this.http.get<Result<UserResponse[]>>(`${this.baseUrl}/User/GetAllUsers`, {
       headers: this.getHeaders(),
     }).subscribe({
@@ -101,6 +158,7 @@ export class Users implements OnInit {
   }
 
   toggleAddModal(open?: boolean) {
+    if (!this.canManageUsers()) return;
     this.addModalOpen.set(open ?? !this.addModalOpen());
     this.submitError.set('');
     this.submitMessage.set('');
@@ -111,6 +169,11 @@ export class Users implements OnInit {
   }
 
   submitUser() {
+    if (!this.canManageUsers()) {
+      this.submitError.set('You do not have permission to create users');
+      return;
+    }
+
     if (!this.newUsername.trim()) {
       this.submitError.set('Username is required');
       return;
@@ -158,6 +221,7 @@ export class Users implements OnInit {
   }
 
   openEditModal(user: UserResponse) {
+    if (!this.canManageUsers()) return;
     this.editingUser = user;
     this.editUsername = user.username;
     this.editEmail = user.email;
@@ -219,6 +283,7 @@ export class Users implements OnInit {
   }
 
   confirmDelete(id: number) {
+    if (!this.canManageUsers()) return;
     this.deletingUserId = id;
     this.deleteModalOpen.set(true);
   }

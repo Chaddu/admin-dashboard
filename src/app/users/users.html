@@ -1,7 +1,7 @@
 <div class="page-container">
   <div class="page-header">
     <h1>Users</h1>
-    <button type="button" class="primary-button" (click)="toggleAddModal(true)">Add User</button>
+    <button type="button" class="primary-button" (click)="toggleAddModal(true)" *ngIf="canManageUsers()">Add User</button>
   </div>
 
   <div *ngIf="isLoading()" class="loading">Loading users...</div>
@@ -19,7 +19,7 @@
           <th>Username</th>
           <th>Email</th>
           <th>Role</th>
-          <th>Actions</th>
+          <th *ngIf="canManageUsers()">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -30,7 +30,7 @@
           <td>
             <span class="role-badge" [attr.data-role]="user.role">{{ getRoleName(user.role) }}</span>
           </td>
-          <td class="actions">
+          <td class="actions" *ngIf="canManageUsers()">
             <button type="button" class="icon-button edit" (click)="openEditModal(user)" title="Edit">✏️</button>
             <button type="button" class="icon-button delete" (click)="confirmDelete(user.id)" title="Delete">🗑️</button>
           </td>
