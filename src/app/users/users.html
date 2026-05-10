@@ -1,43 +1,230 @@
-<div class="page-container">
-  <div class="page-header">
-    <h1>Users</h1>
-    <button type="button" class="primary-button" (click)="toggleAddModal(true)" *ngIf="canManageUsers()">Add User</button>
+<!-- Instructor Profile View -->
+<div *ngIf="!isLoading() && viewingOwnProfile() && currentUserProfile()" class="profile-container">
+  <div class="profile-card">
+    <div class="profile-header">
+      <div class="profile-header-top">
+        <h1 class="profile-header-title">My Profile</h1>
+        <div class="profile-header-buttons">
+          <button type="button" class="edit-profile-button" (click)="openProfileEditModal(currentUserProfile()!)" title="Edit Profile">
+            ✏️ Edit
+          </button>
+          <button type="button" class="close-profile-button" (click)="closeProfileView()" title="Back to Users">
+            ← Back
+          </button>
+        </div>
+      </div>
+      <div class="profile-avatar">
+        {{ currentUserProfile()!.username.charAt(0).toUpperCase() }}
+      </div>
+    </div>
+    
+    <div class="profile-content">
+      <h1 class="profile-name">{{ currentUserProfile()!.username }}</h1>
+      <p class="profile-role">{{ getRoleName(currentUserProfile()!.role) }}</p>
+      
+      <div class="profile-section">
+        <h2>Account Information</h2>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">User ID</span>
+            <span class="info-value">{{ currentUserProfile()!.id }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Username</span>
+            <span class="info-value">{{ currentUserProfile()!.username }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Email</span>
+            <span class="info-value">{{ currentUserProfile()!.email }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Account Type</span>
+            <span class="info-value role-badge" [attr.data-role]="currentUserProfile()!.role">{{ getRoleName(currentUserProfile()!.role) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
+</div>
 
-  <div *ngIf="isLoading()" class="loading">Loading users...</div>
-  <div *ngIf="error()" class="error">{{ error() }}</div>
+<!-- Student Profile View -->
+<div *ngIf="!isLoading() && isStudent() && users().length > 0" class="profile-container">
+  <div class="profile-card">
+    <div class="profile-header">
+      <div class="profile-header-top">
+        <h1 class="profile-header-title">My Profile</h1>
+        <button type="button" class="edit-profile-button" (click)="openProfileEditModal(users()[0])" title="Edit Profile">
+          ✏️ Edit
+        </button>
+      </div>
+      <div class="profile-avatar">
+        {{ users()[0].username.charAt(0).toUpperCase() }}
+      </div>
+    </div>
+    
+    <div class="profile-content">
+      <h1 class="profile-name">{{ users()[0].username }}</h1>
+      <p class="profile-role">{{ getRoleName(users()[0].role) }}</p>
+      
+      <div class="profile-section">
+        <h2>Account Information</h2>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">User ID</span>
+            <span class="info-value">{{ users()[0].id }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Username</span>
+            <span class="info-value">{{ users()[0].username }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Email</span>
+            <span class="info-value">{{ users()[0].email }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Account Type</span>
+            <span class="info-value role-badge" [attr.data-role]="users()[0].role">{{ getRoleName(users()[0].role) }}</span>
+          </div>
+        </div>
+      </div>
 
-  <div *ngIf="!isLoading() && users().length === 0" class="empty-state">
-    No users found. Add a user to get started.
+      <div class="profile-section">
+        <h2>Quick Stats</h2>
+        <div class="stats-grid">
+          <div class="stat-card" (click)="navigateToCourses()">
+            <div class="stat-icon">📚</div>
+            <div class="stat-text">View your courses</div>
+          </div>
+          <div class="stat-card" (click)="navigateToEnrollments()">
+            <div class="stat-icon">📋</div>
+            <div class="stat-text">Track your enrollments</div>
+          </div>
+          <div class="stat-card" (click)="navigateToAssignments()">
+            <div class="stat-icon">🎯</div>
+            <div class="stat-text">Monitor deadlines</div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
+</div>
 
-  <div class="table-container" *ngIf="!isLoading() && users().length > 0">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Username</th>
-          <th>Email</th>
-          <th>Role</th>
-          <th *ngIf="canManageUsers()">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let user of users()">
-          <td>{{ user.id }}</td>
-          <td>{{ user.username }}</td>
-          <td>{{ user.email }}</td>
-          <td>
-            <span class="role-badge" [attr.data-role]="user.role">{{ getRoleName(user.role) }}</span>
-          </td>
-          <td class="actions" *ngIf="canManageUsers()">
-            <button type="button" class="icon-button edit" (click)="openEditModal(user)" title="Edit">✏️</button>
-            <button type="button" class="icon-button delete" (click)="confirmDelete(user.id)" title="Delete">🗑️</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+<!-- Admin/Instructor View -->
+<div *ngIf="!isStudent()">
+  <div class="page-container">
+    <div class="page-header">
+      <h1>Users</h1>
+      <div class="header-buttons">
+        <button type="button" class="primary-button" (click)="openInstructorProfile()" *ngIf="isInstructor()">
+          👤 My Profile
+        </button>
+        <button type="button" class="primary-button" (click)="toggleAddModal(true)" *ngIf="canManageUsers()">Add User</button>
+      </div>
+    </div>
+
+    <!-- Instructor Search Section -->
+    <div *ngIf="isInstructor()" class="search-section">
+      <div class="search-container">
+        <h3>Find & Enroll Students</h3>
+        <div class="search-form">
+          <input 
+            type="text" 
+            [(ngModel)]="searchUsername" 
+            placeholder="Enter student username" 
+            (keyup.enter)="searchStudent()"
+            class="search-input"
+          />
+          <button 
+            type="button" 
+            class="primary-button" 
+            (click)="searchStudent()"
+            [disabled]="isSearching()"
+          >
+            {{ isSearching() ? 'Searching...' : 'Search' }}
+          </button>
+          <button 
+            type="button" 
+            class="secondary-button" 
+            (click)="clearSearch()"
+            *ngIf="searchResults()"
+          >
+            Clear
+          </button>
+        </div>
+
+        <div *ngIf="searchError()" class="search-error">{{ searchError() }}</div>
+
+        <!-- Search Results -->
+        <div *ngIf="searchResults()" class="search-result">
+          <div class="result-card">
+            <div class="result-header">
+              <h4>{{ searchResults()!.username }}</h4>
+              <span class="result-email">{{ searchResults()!.email }}</span>
+            </div>
+            <div class="result-body">
+              <p><strong>User ID:</strong> {{ searchResults()!.id }}</p>
+              <p><strong>Status:</strong> 
+                <span *ngIf="studentAlreadyEnrolled()" class="status-enrolled">Already Enrolled ✓</span>
+                <span *ngIf="!studentAlreadyEnrolled()" class="status-not-enrolled">Not Enrolled</span>
+              </p>
+            </div>
+            <div class="result-actions">
+              <button 
+                type="button" 
+                class="primary-button"
+                (click)="openEnrollmentFromSearchModal()"
+                [disabled]="studentAlreadyEnrolled()"
+                *ngIf="!studentAlreadyEnrolled()"
+              >
+                + Add Enrollment
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="isLoading()" class="loading">Loading users...</div>
+    <div *ngIf="error()" class="error">{{ error() }}</div>
+
+    <div *ngIf="!isLoading() && !isInstructor() && users().length === 0" class="empty-state">
+      No users found. Add a user to get started.
+    </div>
+
+    <div class="table-container" *ngIf="!isLoading() && users().length > 0">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th *ngIf="canManageUsers()">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let user of users()">
+            <td>{{ user.id }}</td>
+            <td>{{ user.username }}</td>
+            <td>{{ user.email }}</td>
+            <td>
+              <span class="role-badge" [attr.data-role]="user.role">{{ getRoleName(user.role) }}</span>
+            </td>
+            <td class="actions" *ngIf="canManageUsers()">
+              <button type="button" class="icon-button edit" (click)="openEditModal(user)" title="Edit">✏️</button>
+              <button type="button" class="icon-button delete" (click)="confirmDelete(user.id)" title="Delete">🗑️</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
+</div>
+
+<!-- Loading State -->
+<div *ngIf="isLoading()" class="loading-container">
+  <div class="spinner"></div>
+  <p>Loading profile...</p>
 </div>
 
 <!-- Add User Modal -->
@@ -87,7 +274,7 @@
 <div class="modal-backdrop" *ngIf="editModalOpen()">
   <div class="modal">
     <div class="modal-header">
-      <h3>Edit User</h3>
+      <h3>{{ isStudent() ? 'Edit My Profile' : 'Edit User' }}</h3>
       <button type="button" class="close-button" (click)="toggleEditModal(false)">×</button>
     </div>
 
@@ -100,7 +287,7 @@
         <label>Email</label>
         <input type="email" [(ngModel)]="editEmail" placeholder="Enter email" />
       </div>
-      <div class="form-group">
+      <div class="form-group" *ngIf="!isStudent()">
         <label>Role</label>
         <select [(ngModel)]="editRole">
           <option value="0">Student</option>
@@ -137,6 +324,36 @@
     <div class="modal-actions">
       <button type="button" class="secondary-button" (click)="toggleDeleteModal(false)">Cancel</button>
       <button type="button" class="danger-button" (click)="deleteUser()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Enrollment from Search Modal -->
+<div class="modal-backdrop" *ngIf="enrollmentFromSearchModalOpen()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Enrollment</h3>
+      <button type="button" class="close-button" (click)="closeEnrollmentFromSearchModal()">×</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Student</label>
+        <input type="text" [value]="enrollmentStudentUsername" readonly class="readonly-input" />
+      </div>
+      <div class="form-group">
+        <label>Course</label>
+        <input type="text" [value]="instructorCourses()[0]?.title || 'Unknown Course'" readonly class="readonly-input" />
+      </div>
+
+      <div *ngIf="searchError()" class="form-error">{{ searchError() }}</div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="secondary-button" (click)="closeEnrollmentFromSearchModal()" [disabled]="addingEnrollment()">Cancel</button>
+      <button type="button" class="primary-button" (click)="confirmAddEnrollmentFromSearch()" [disabled]="addingEnrollment()">
+        {{ addingEnrollment() ? 'Creating...' : 'Create Enrollment' }}
+      </button>
     </div>
   </div>
 </div>

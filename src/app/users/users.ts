@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Router } from '@angular/router';
 
 enum UserRole {
   Student = 0,
@@ -31,10 +32,30 @@ interface Result<T> {
 })
 export class Users implements OnInit {
   private readonly baseUrl = 'https://localhost:7108/api';
+  private readonly registerUrl = `${this.baseUrl}/Auth/Register`;
 
   users = signal<UserResponse[]>([]);
   isLoading = signal(false);
   error = signal('');
+  isStudent = signal(false);
+  isInstructor = signal(false);
+  viewingOwnProfile = signal(false);
+  currentUserProfile = signal<UserResponse | null>(null);
+
+  // Search functionality
+  searchUsername = '';
+  searchResults = signal<UserResponse | null>(null);
+  searchError = signal('');
+  isSearching = signal(false);
+  instructorCourses = signal<any[]>([]);
+  studentAlreadyEnrolled = signal(false);
+  addingEnrollment = signal(false);
+  
+  // Enrollment from search modal
+  enrollmentFromSearchModalOpen = signal(false);
+  enrollmentCourseId = 0;
+  enrollmentStudentId = 0;
+  enrollmentStudentUsername = '';
 
   // Add user modal
   addModalOpen = signal(false);
@@ -94,7 +115,17 @@ export class Users implements OnInit {
     return currentUser ? currentUser.role > 0 : false; // Only instructors (1) and admins (2) can manage users
   }
 
-  constructor(private http: HttpClient) {}
+  private isCurrentUserStudent(): boolean {
+    const currentUser = this.getCurrentUser();
+    return currentUser ? currentUser.role === 0 : false;
+  }
+
+  private isCurrentUserInstructor(): boolean {
+    const currentUser = this.getCurrentUser();
+    return currentUser ? currentUser.role === 1 : false;
+  }
+
+  constructor(private http: HttpClient, private router: Router) {}
 
   ngOnInit() {
     this.loadUsers();
@@ -105,12 +136,22 @@ export class Users implements OnInit {
     this.error.set('');
 
     const currentUser = this.getCurrentUser();
+    const isStudentUser = this.isCurrentUserStudent();
+    const isInstructorUser = this.isCurrentUserInstructor();
+    
+    this.isStudent.set(isStudentUser);
+    this.isInstructor.set(isInstructorUser);
 
-    if (currentUser && currentUser.role === 0) {
+    if (isStudentUser) {
       // For students, load only their own profile
-      this.loadStudentProfile(currentUser.id);
+      this.loadStudentProfile(currentUser!.id);
+    } else if (isInstructorUser) {
+      // For instructors, load their courses and don't call GetAllUsers
+      this.loadInstructorCourses(currentUser!.id);
+      this.users.set([]);
+      this.isLoading.set(false);
     } else {
-      // For admins/instructors, load all users
+      // For admins, load all users
       this.loadAllUsers();
     }
   }
@@ -198,7 +239,7 @@ export class Users implements OnInit {
       role: parseInt(this.newRole),
     };
 
-    this.http.post<Result<UserResponse>>(`${this.baseUrl}/User`, userData, {
+    this.http.post<Result<UserResponse>>(this.registerUrl, userData, {
       headers: this.getHeaders(),
     }).subscribe({
       next: (response) => {
@@ -229,6 +270,201 @@ export class Users implements OnInit {
     this.editModalOpen.set(true);
     this.editError.set('');
     this.editMessage.set('');
+  }
+
+  openProfileEditModal(user: UserResponse) {
+    // For students editing their own profile
+    this.editingUser = user;
+    this.editUsername = user.username;
+    this.editEmail = user.email;
+    this.editRole = user.role.toString();
+    this.editModalOpen.set(true);
+    this.editError.set('');
+    this.editMessage.set('');
+  }
+
+  navigateToCourses() {
+    this.router.navigate(['/courses']);
+  }
+
+  navigateToEnrollments() {
+    this.router.navigate(['/enrollments']);
+  }
+
+  navigateToAssignments() {
+    this.router.navigate(['/assignments']);
+  }
+
+  private loadInstructorCourses(instructorId: number) {
+    this.http.get<Result<any[]>>(`${this.baseUrl}/Course`, {
+      headers: this.getHeaders(),
+    }).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          const instructorCourses = response.data.filter((c: any) => c.instructorId === instructorId);
+          this.instructorCourses.set(instructorCourses);
+        }
+      },
+      error: () => {
+        this.instructorCourses.set([]);
+      },
+    });
+  }
+
+  searchStudent() {
+    this.searchError.set('');
+    this.searchResults.set(null);
+    this.studentAlreadyEnrolled.set(false);
+
+    if (!this.searchUsername.trim()) {
+      this.searchError.set('Please enter a username');
+      return;
+    }
+
+    this.isSearching.set(true);
+
+    this.http.get<Result<UserResponse>>(`${this.baseUrl}/User/By-username?username=${this.searchUsername}`, {
+      headers: this.getHeaders(),
+    }).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          const foundUser = response.data;
+          
+          // Check if user is a student
+          if (foundUser.role !== 0) {
+            this.searchError.set('This user is not a student');
+            this.isSearching.set(false);
+            return;
+          }
+
+          // Check if student is already enrolled in instructor's course
+          const instructorCourse = this.instructorCourses()[0];
+          if (instructorCourse) {
+            this.checkEnrollment(foundUser.id, instructorCourse.id, foundUser);
+          } else {
+            this.searchResults.set(foundUser);
+            this.isSearching.set(false);
+          }
+        } else {
+          this.searchError.set('User not found');
+          this.isSearching.set(false);
+        }
+      },
+      error: (err) => {
+        this.searchError.set(err.error?.message || 'Error searching for user');
+        this.isSearching.set(false);
+      },
+    });
+  }
+
+  private checkEnrollment(userId: number, courseId: number, user: UserResponse) {
+    this.http.get<Result<any[]>>(`${this.baseUrl}/Enrollment`, {
+      headers: this.getHeaders(),
+    }).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          const isEnrolled = response.data.some((e: any) => e.userId === userId && e.courseId === courseId);
+          this.studentAlreadyEnrolled.set(isEnrolled);
+          this.searchResults.set(user);
+        } else {
+          this.searchResults.set(user);
+        }
+        this.isSearching.set(false);
+      },
+      error: () => {
+        this.searchResults.set(user);
+        this.isSearching.set(false);
+      },
+    });
+  }
+
+  openEnrollmentFromSearchModal() {
+    const foundUser = this.searchResults();
+    const instructorCourse = this.instructorCourses()[0];
+
+    if (!foundUser || !instructorCourse) {
+      this.searchError.set('Error: User or course not found');
+      return;
+    }
+
+    this.enrollmentCourseId = instructorCourse.id;
+    this.enrollmentStudentId = foundUser.id;
+    this.enrollmentStudentUsername = foundUser.username;
+    this.enrollmentFromSearchModalOpen.set(true);
+  }
+
+  closeEnrollmentFromSearchModal() {
+    this.enrollmentFromSearchModalOpen.set(false);
+    this.enrollmentCourseId = 0;
+    this.enrollmentStudentId = 0;
+    this.enrollmentStudentUsername = '';
+  }
+
+  confirmAddEnrollmentFromSearch() {
+    this.addingEnrollment.set(true);
+
+    const enrollmentData = {
+      userId: this.enrollmentStudentId,
+      courseId: this.enrollmentCourseId,
+    };
+
+    this.http.post<Result<any>>(`${this.baseUrl}/Enrollment`, enrollmentData, {
+      headers: this.getHeaders(),
+    }).subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.searchError.set('');
+          this.searchUsername = '';
+          this.searchResults.set(null);
+          this.studentAlreadyEnrolled.set(false);
+          this.closeEnrollmentFromSearchModal();
+          alert('Enrollment added successfully!');
+        } else {
+          alert(response.message || 'Failed to add enrollment');
+        }
+        this.addingEnrollment.set(false);
+      },
+      error: (err) => {
+        alert(err.error?.message || 'Error adding enrollment');
+        this.addingEnrollment.set(false);
+      },
+    });
+  }
+
+  clearSearch() {
+    this.searchUsername = '';
+    this.searchResults.set(null);
+    this.searchError.set('');
+    this.studentAlreadyEnrolled.set(false);
+  }
+
+  openInstructorProfile() {
+    const currentUser = this.getCurrentUser();
+    if (!currentUser) return;
+
+    // Load courses for this instructor
+    this.loadInstructorCourses(currentUser.id);
+
+    this.http.get<Result<UserResponse>>(`${this.baseUrl}/User/my`, {
+      headers: this.getHeaders(),
+    }).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.currentUserProfile.set(response.data);
+          this.viewingOwnProfile.set(true);
+        } else {
+          this.error.set('Failed to load profile');
+        }
+      },
+      error: (err) => {
+        this.error.set('Error loading profile: ' + (err.error?.message || err.message));
+      },
+    });
+  }
+
+  closeProfileView() {
+    this.viewingOwnProfile.set(false);
+    this.currentUserProfile.set(null);
   }
 
   toggleEditModal(open?: boolean) {

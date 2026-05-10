@@ -27,8 +27,12 @@ export class Enrollments implements OnInit {
   private readonly baseUrl = 'https://localhost:7108/api';
 
   enrollments = signal<EnrollmentResponse[]>([]);
+  filteredEnrollments = signal<EnrollmentResponse[]>([]);
   isLoading = signal(false);
   error = signal('');
+  notAuthorized = signal(false);
+  isInstructor = signal(false);
+  instructorCourseIds = signal<number[]>([]);
 
   // Add enrollment modal
   addModalOpen = signal(false);
@@ -92,10 +96,46 @@ export class Enrollments implements OnInit {
     return currentUser ? currentUser.role > 0 : false; // Only instructors (1) and admins (2) can manage enrollments
   }
 
+  private isCurrentUserInstructor(): boolean {
+    const currentUser = this.getCurrentUser();
+    return currentUser ? currentUser.role === 1 : false;
+  }
+
+  private loadInstructorCourses(instructorId: number) {
+    this.http.get<Result<any[]>>(`${this.baseUrl}/Course`, {
+      headers: this.getHeaders(),
+    }).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          const courseIds = response.data
+            .filter((c: any) => c.instructorId === instructorId)
+            .map((c: any) => c.id);
+          this.instructorCourseIds.set(courseIds);
+          this.loadEnrollments();
+        } else {
+          this.loadEnrollments();
+        }
+      },
+      error: () => {
+        this.loadEnrollments();
+      },
+    });
+  }
+
   constructor(private http: HttpClient) {}
 
   ngOnInit() {
-    this.loadEnrollments();
+    const currentUser = this.getCurrentUser();
+    const isInstructorUser = this.isCurrentUserInstructor();
+    this.isInstructor.set(isInstructorUser);
+
+    if (currentUser && currentUser.role === 0) {
+      this.loadStudentEnrollments(currentUser.id);
+    } else if (isInstructorUser) {
+      this.loadInstructorCourses(currentUser!.id);
+    } else {
+      this.loadAdminEnrollments();
+    }
   }
 
   loadEnrollments() {
@@ -108,6 +148,9 @@ export class Enrollments implements OnInit {
     if (currentUser && currentUser.role === 0) {
       console.log('Loading student enrollments');
       this.loadStudentEnrollments(currentUser.id);
+    } else if (this.isInstructor()) {
+      console.log('Loading instructor enrollments');
+      this.loadAdminEnrollments();
     } else {
       console.log('Loading admin enrollments');
       this.loadAdminEnrollments();
@@ -128,7 +171,12 @@ export class Enrollments implements OnInit {
         this.isLoading.set(false);
       },
       error: (err) => {
-        this.error.set('Error loading enrollments: ' + (err.error?.message || err.message));
+        if (err.status === 403) {
+          this.notAuthorized.set(true);
+          this.error.set('');
+        } else {
+          this.error.set('Error loading enrollments: ' + (err.error?.message || err.message));
+        }
         this.isLoading.set(false);
       },
     });
@@ -147,7 +195,12 @@ export class Enrollments implements OnInit {
         this.isLoading.set(false);
       },
       error: (err) => {
-        this.error.set('Error loading enrollments: ' + (err.error?.message || err.message));
+        if (err.status === 403) {
+          this.notAuthorized.set(true);
+          this.error.set('');
+        } else {
+          this.error.set('Error loading enrollments: ' + (err.error?.message || err.message));
+        }
         this.isLoading.set(false);
       },
     });

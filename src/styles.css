@@ -1,1 +1,17 @@
 /* You can add global styles to this file, and also import other style files */
+
+/* Not Authorized Message - Global */
+.not-authorized {
+  padding: 20px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.not-authorized p {
+  margin: 0;
+  color: #991b1b;
+  font-size: 1rem;
+}

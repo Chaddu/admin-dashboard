@@ -1,3 +1,23 @@
+<div *ngIf="isLoading()">
+  <!-- Loading state -->
+</div>
+
+<div *ngIf="!isLoading() && !isAdmin()" class="access-denied-container">
+  <div class="access-denied-content">
+    <div class="access-denied-icon">🔒</div>
+    <h1>Access Restricted</h1>
+    <p class="access-denied-message">We're sorry, but the Admin Dashboard is exclusively for administrators only.</p>
+    <div class="access-denied-info">
+      <p>If you believe you should have access, please contact your system administrator.</p>
+      <p class="info-highlight">Current role: <span id="userRole">Student/Instructor</span></p>
+    </div>
+    <div class="access-denied-footer">
+      <button type="button" class="access-denied-button" (click)="returnToHome()">← Return to Home</button>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="!isLoading() && isAdmin()">
 <div class="dashboard-header">
   <h1>Admin Dashboard</h1>
   <p>Welcome back, Administrator! Manage your educational platform efficiently with real-time insights and quick actions.</p>
@@ -82,12 +102,12 @@
     <p>Activity feed will be implemented in future updates. Stay tuned!</p>
   </div>
 </div>
+</div>
 
-<div class="modal-backdrop" *ngIf="loginModalOpen">
+<div class="modal-backdrop" *ngIf="loginModalOpen()">
   <div class="modal">
     <div class="modal-header">
-      <h3>Admin Login</h3>
-      <button type="button" class="close-button" (click)="toggleLoginModal(false)">×</button>
+      <h3>Login</h3>
     </div>
 
     <div class="modal-body">
@@ -100,14 +120,14 @@
         <input type="password" [(ngModel)]="loginPassword" placeholder="Enter password" />
       </div>
 
-      <div *ngIf="loginError" class="form-error">{{ loginError }}</div>
-      <div *ngIf="loginMessage" class="form-success">{{ loginMessage }}</div>
+      <div *ngIf="loginError()" class="form-error">{{ loginError() }}</div>
+      <div *ngIf="loginMessage()" class="form-success">{{ loginMessage() }}</div>
     </div>
 
     <div class="modal-actions">
-      <button type="button" class="secondary-button" (click)="toggleLoginModal(false)" [disabled]="isLoggingIn">Cancel</button>
-      <button type="button" class="primary-button" (click)="submitLogin()" [disabled]="isLoggingIn">
-        {{ isLoggingIn ? 'Logging in...' : 'Login' }}
+      <button type="button" class="secondary-button" (click)="toggleLoginModal(false)" [disabled]="isLoggingIn()">Cancel</button>
+      <button type="button" class="primary-button" (click)="submitLogin()" [disabled]="isLoggingIn()">
+        {{ isLoggingIn() ? 'Logging in...' : 'Login' }}
       </button>
     </div>
   </div>

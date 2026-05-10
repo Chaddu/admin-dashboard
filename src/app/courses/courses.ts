@@ -29,6 +29,7 @@ export class Courses implements OnInit {
   courses = signal<CourseResponse[]>([]);
   isLoading = signal(false);
   error = signal('');
+  notAuthorized = signal(false);
 
   // Add course modal
   addModalOpen = signal(false);
@@ -79,7 +80,12 @@ export class Courses implements OnInit {
         this.isLoading.set(false);
       },
       error: (err) => {
-        this.error.set('Error loading courses: ' + (err.error?.message || err.message));
+        if (err.status === 403) {
+          this.notAuthorized.set(true);
+          this.error.set('');
+        } else {
+          this.error.set('Error loading courses: ' + (err.error?.message || err.message));
+        }
         this.isLoading.set(false);
       },
     });

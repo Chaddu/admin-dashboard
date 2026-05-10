@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { catchError, finalize, timeout, throwError } from 'rxjs';
 
@@ -20,18 +20,21 @@ export class Dashboard implements OnInit {
   private readonly enrollmentUrl = `${this.baseUrl}/Enrollment`;
   private readonly assignmentUrl = `${this.baseUrl}/Assignment`;
 
+  isAdmin = signal(false);
+  isLoading = signal(true);
+
   totalStudents = signal(0);
   totalInstructors = signal(0);
   totalCourses = signal(0);
   totalEnrollments = signal(0);
   totalAssignments = signal(0);
 
-  loginModalOpen = false;
+  loginModalOpen = signal(false);
   loginUsername = '';
   loginPassword = '';
-  isLoggingIn = false;
-  loginError = '';
-  loginMessage = '';
+  isLoggingIn = signal(false);
+  loginError = signal('');
+  loginMessage = signal('');
 
   userModalOpen = false;
   newUsername = '';
@@ -68,16 +71,66 @@ export class Dashboard implements OnInit {
 
   private jwtToken = '';
 
-  constructor(private http: HttpClient, private cdr: ChangeDetectorRef, private route: ActivatedRoute) {}
+  constructor(private http: HttpClient, private cdr: ChangeDetectorRef, private route: ActivatedRoute, private router: Router) {}
+
+  private getCurrentUser(): { id: number; role: number } | null {
+    const token = localStorage.getItem('jwtToken');
+    if (!token) return null;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const roleString = payload.role || payload.userRole || '';
+      let role = 0;
+      if (roleString === 'Student' || roleString === '0') role = 0;
+      else if (roleString === 'Instructor' || roleString === '1') role = 1;
+      else if (roleString === 'Admin' || roleString === '2') role = 2;
+      return {
+        id: parseInt(payload.sub || payload.id || payload.userId || '0', 10),
+        role: role
+      };
+    } catch (e) {
+      console.error('Error decoding JWT:', e);
+      return null;
+    }
+  }
 
   ngOnInit() {
     this.jwtToken = localStorage.getItem('jwtToken') || '';
+    
+    // Check if user has a token
+    const currentUser = this.getCurrentUser();
+    if (!currentUser || !this.jwtToken) {
+      // No token, show login modal
+      this.isAdmin.set(false);
+      this.isLoading.set(false);
+      this.toggleLoginModal(true);
+      return;
+    }
+
+    // Token exists, check if user is admin
+    if (currentUser.role !== 2) {
+      // Not an admin, redirect to appropriate page
+      this.isAdmin.set(false);
+      this.isLoading.set(false);
+      if (currentUser.role === 0) {
+        // Student - redirect to users page
+        this.router.navigate(['/users']);
+      } else if (currentUser.role === 1) {
+        // Instructor - redirect to users page for profile
+        this.router.navigate(['/users']);
+      }
+      return;
+    }
+
+    // User is admin, show dashboard
+    this.isAdmin.set(true);
     this.route.fragment.subscribe((fragment) => {
       if (fragment === 'login') {
         this.toggleLoginModal(true);
       }
     });
     this.loadStats();
+    this.isLoading.set(false);
   }
 
   loadStats() {
@@ -112,21 +165,35 @@ export class Dashboard implements OnInit {
   }
 
   toggleLoginModal(value: boolean) {
-    this.loginModalOpen = value;
+    this.loginModalOpen.set(value);
     if (!value) {
       this.loginUsername = '';
       this.loginPassword = '';
-      this.loginError = '';
-      this.loginMessage = '';
+      this.loginError.set('');
+      this.loginMessage.set('');
+    }
+  }
+
+  returnToHome() {
+    const currentUser = this.getCurrentUser();
+    if (currentUser && currentUser.role === 0) {
+      // Student - go to users page
+      this.router.navigate(['/users']);
+    } else if (currentUser && currentUser.role === 1) {
+      // Instructor - go to users page for profile
+      this.router.navigate(['/users']);
+    } else {
+      // Admin or no token - go to home
+      this.router.navigate(['/']);
     }
   }
 
   submitLogin() {
-    this.loginError = '';
-    this.loginMessage = '';
+    this.loginError.set('');
+    this.loginMessage.set('');
 
     if (!this.loginUsername.trim() || !this.loginPassword.trim()) {
-      this.loginError = 'Username and password are required.';
+      this.loginError.set('Username and password are required.');
       return;
     }
 
@@ -135,7 +202,7 @@ export class Dashboard implements OnInit {
       password: this.loginPassword,
     };
 
-    this.isLoggingIn = true;
+    this.isLoggingIn.set(true);
     this.http.post<any>(this.loginUrl, loginData).pipe(
       timeout(10000),
       catchError((err) => {
@@ -143,11 +210,11 @@ export class Dashboard implements OnInit {
         const message = err?.status === 0
           ? 'Unable to reach the server. Check if the backend is running.'
           : err?.error?.message || err?.message || 'Login failed.';
-        this.loginError = message;
+        this.loginError.set(message);
         return throwError(() => err);
       }),
       finalize(() => {
-        this.isLoggingIn = false;
+        this.isLoggingIn.set(false);
       })
     ).subscribe({
       next: (res) => {
@@ -155,11 +222,13 @@ export class Dashboard implements OnInit {
         if (res?.data?.token) {
           this.jwtToken = res.data.token;
           localStorage.setItem('jwtToken', this.jwtToken);
-          this.loginMessage = 'Login successful.';
-          this.toggleLoginModal(false);
-          this.loadStats(); // Refresh stats with auth
+          this.loginMessage.set('Login successful.');
+          setTimeout(() => {
+            this.toggleLoginModal(false);
+            window.location.reload();
+          }, 1000);
         } else {
-          this.loginError = 'Invalid login response.';
+          this.loginError.set('Invalid login response.');
         }
       },
       error: () => {

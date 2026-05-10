@@ -7,7 +7,11 @@
   <div *ngIf="isLoading()" class="loading">Loading courses...</div>
   <div *ngIf="error()" class="error">{{ error() }}</div>
 
-  <div *ngIf="!isLoading() && courses().length === 0" class="empty-state">
+  <div *ngIf="notAuthorized()" class="not-authorized">
+    <p>Please register as a student or instructor to view courses.</p>
+  </div>
+
+  <div *ngIf="!isLoading() && !notAuthorized() && courses().length === 0" class="empty-state">
     No courses found. Add a course to get started.
   </div>
 

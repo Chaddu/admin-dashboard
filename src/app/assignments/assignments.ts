@@ -11,6 +11,13 @@ interface AssignmentResponse {
   courseId: number;
 }
 
+interface EnrollmentResponse {
+  id: number;
+  userId: number;
+  courseId: number;
+  enrolledAt: string;
+}
+
 interface Result<T> {
   success: boolean;
   data?: T;
@@ -28,8 +35,13 @@ export class Assignments implements OnInit {
   private readonly baseUrl = 'https://localhost:7108/api';
 
   assignments = signal<AssignmentResponse[]>([]);
+  filteredAssignments = signal<AssignmentResponse[]>([]);
   isLoading = signal(false);
   error = signal('');
+  notAuthorized = signal(false);
+  enrolledCourseIds = signal<number[]>([]);
+  isInstructor = signal(false);
+  instructorCourseIds = signal<number[]>([]);
 
   // Add assignment modal
   addModalOpen = signal(false);
@@ -64,10 +76,94 @@ export class Assignments implements OnInit {
     });
   }
 
+  private getCurrentUser(): { id: number; role: number } | null {
+    const token = localStorage.getItem('jwtToken');
+    if (!token) return null;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const roleString = payload.role || payload.userRole || '';
+      let role = 0;
+      if (roleString === 'Student' || roleString === '0') role = 0;
+      else if (roleString === 'Instructor' || roleString === '1') role = 1;
+      else if (roleString === 'Admin' || roleString === '2') role = 2;
+      return {
+        id: parseInt(payload.sub || payload.id || payload.userId || '0', 10),
+        role: role
+      };
+    } catch (e) {
+      console.error('Error decoding JWT:', e);
+      return null;
+    }
+  }
+
+  private isStudent(): boolean {
+    const currentUser = this.getCurrentUser();
+    return currentUser ? currentUser.role === 0 : false;
+  }
+
+  private isCurrentUserInstructor(): boolean {
+    const currentUser = this.getCurrentUser();
+    return currentUser ? currentUser.role === 1 : false;
+  }
+
+  private loadInstructorCourses(instructorId: number) {
+    this.http.get<Result<any[]>>(`${this.baseUrl}/Course`, {
+      headers: this.getHeaders(),
+    }).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          const courseIds = response.data
+            .filter((c: any) => c.instructorId === instructorId)
+            .map((c: any) => c.id);
+          this.instructorCourseIds.set(courseIds);
+          this.loadAssignments();
+        } else {
+          this.loadAssignments();
+        }
+      },
+      error: () => {
+        this.loadAssignments();
+      },
+    });
+  }
+
   constructor(private http: HttpClient) {}
 
   ngOnInit() {
-    this.loadAssignments();
+    const currentUser = this.getCurrentUser();
+    const isInstructorUser = this.isCurrentUserInstructor();
+    this.isInstructor.set(isInstructorUser);
+
+    if (this.isStudent()) {
+      this.loadStudentEnrollments();
+    } else if (isInstructorUser) {
+      this.loadInstructorCourses(currentUser!.id);
+    } else {
+      this.loadAssignments();
+    }
+  }
+
+  private loadStudentEnrollments() {
+    this.http.get<Result<EnrollmentResponse[]>>(`${this.baseUrl}/Enrollment/my`, {
+      headers: this.getHeaders(),
+    }).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          const courseIds = response.data.map(e => e.courseId);
+          this.enrolledCourseIds.set(courseIds);
+          this.loadAssignments();
+        } else {
+          this.enrolledCourseIds.set([]);
+          this.loadAssignments();
+        }
+      },
+      error: (err) => {
+        console.error('Error loading enrollments:', err);
+        this.enrolledCourseIds.set([]);
+        this.loadAssignments();
+      },
+    });
   }
 
   loadAssignments() {
@@ -80,13 +176,34 @@ export class Assignments implements OnInit {
       next: (response) => {
         if (response.success && response.data) {
           this.assignments.set(response.data);
+          // Filter based on user role
+          if (this.isStudent()) {
+            const enrolledIds = this.enrolledCourseIds();
+            const filtered = response.data.filter(a => enrolledIds.includes(a.courseId));
+            this.filteredAssignments.set(filtered);
+          } else if (this.isInstructor()) {
+            const instructorIds = this.instructorCourseIds();
+            const filtered = response.data.filter(a => instructorIds.includes(a.courseId));
+            this.filteredAssignments.set(filtered);
+          } else {
+            this.filteredAssignments.set(response.data);
+          }
         } else {
           this.error.set(response.message || 'Failed to load assignments');
+          this.assignments.set([]);
+          this.filteredAssignments.set([]);
         }
         this.isLoading.set(false);
       },
       error: (err) => {
-        this.error.set('Error loading assignments: ' + (err.error?.message || err.message));
+        if (err.status === 403) {
+          this.notAuthorized.set(true);
+          this.error.set('');
+        } else {
+          this.error.set('Error loading assignments: ' + (err.error?.message || err.message));
+        }
+        this.assignments.set([]);
+        this.filteredAssignments.set([]);
         this.isLoading.set(false);
       },
     });
@@ -118,6 +235,16 @@ export class Assignments implements OnInit {
     if (!this.newTitle.trim()) {
       this.submitError.set('Title is required');
       return;
+    }
+
+    // Validate course access for instructors
+    if (this.isInstructor()) {
+      const courseId = this.newCourseId ? parseInt(this.newCourseId) : 0;
+      const instructorCourseIds = this.instructorCourseIds();
+      if (!instructorCourseIds.includes(courseId)) {
+        this.submitError.set('You can only add assignments to your own course');
+        return;
+      }
     }
 
     this.isSubmitting.set(true);
@@ -177,6 +304,16 @@ export class Assignments implements OnInit {
     if (!this.editTitle.trim()) {
       this.editError.set('Title is required');
       return;
+    }
+
+    // Validate course access for instructors
+    if (this.isInstructor()) {
+      const courseId = this.editCourseId ? parseInt(this.editCourseId) : 0;
+      const instructorCourseIds = this.instructorCourseIds();
+      if (!instructorCourseIds.includes(courseId)) {
+        this.editError.set('You can only edit assignments for your own course');
+        return;
+      }
     }
 
     this.isEditing.set(true);
