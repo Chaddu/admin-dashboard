@@ -1,7 +1,7 @@
 <div class="page-container">
   <div class="page-header">
     <h1>Assignments</h1>
-    <button type="button" class="primary-button" (click)="toggleAddModal(true)">Add Assignment</button>
+    <button type="button" class="primary-button" (click)="toggleAddModal(true)" *ngIf="canAddAssignment()">Add Assignment</button>
   </div>
 
   <div *ngIf="isLoading()" class="loading">Loading assignments...</div>
@@ -24,7 +24,7 @@
           <th>Description</th>
           <th>Due Time</th>
           <th>Course ID</th>
-          <th>Actions</th>
+          <th *ngIf="hasActions()">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -34,9 +34,9 @@
           <td>{{ assignment.description }}</td>
           <td>{{ formatDate(assignment.dueTime) }}</td>
           <td>{{ assignment.courseId }}</td>
-          <td class="actions">
-            <button type="button" class="icon-button edit" (click)="openEditModal(assignment)" title="Edit">✏️</button>
-            <button type="button" class="icon-button delete" (click)="confirmDelete(assignment.id)" title="Delete">🗑️</button>
+          <td class="actions" *ngIf="hasActions()">
+            <button type="button" class="icon-button edit" (click)="openEditModal(assignment)" title="Edit" *ngIf="canEditAssignment()">✏️</button>
+            <button type="button" class="icon-button delete" (click)="confirmDelete(assignment.id)" title="Delete" *ngIf="canDeleteAssignment()">🗑️</button>
           </td>
         </tr>
       </tbody>

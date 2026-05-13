@@ -107,6 +107,25 @@ export class Assignments implements OnInit {
     return currentUser ? currentUser.role === 1 : false;
   }
 
+  canEditAssignment(): boolean {
+    const currentUser = this.getCurrentUser();
+    return currentUser ? currentUser.role >= 1 : false; // Instructor (1) and Admin (2)
+  }
+
+  canDeleteAssignment(): boolean {
+    const currentUser = this.getCurrentUser();
+    return currentUser ? currentUser.role >= 1 : false; // Instructor (1) and Admin (2)
+  }
+
+  canAddAssignment(): boolean {
+    const currentUser = this.getCurrentUser();
+    return currentUser ? currentUser.role >= 1 : false; // Instructor (1) and Admin (2)
+  }
+
+  hasActions(): boolean {
+    return this.canEditAssignment() || this.canDeleteAssignment();
+  }
+
   private loadInstructorCourses(instructorId: number) {
     this.http.get<Result<any[]>>(`${this.baseUrl}/Course`, {
       headers: this.getHeaders(),

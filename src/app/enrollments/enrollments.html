@@ -23,7 +23,7 @@
           <th>User ID</th>
           <th>Course ID</th>
           <th>Enrolled At</th>
-          <th *ngIf="canManageEnrollments()">Actions</th>
+          <th *ngIf="hasActionsEnrollments()">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -32,9 +32,9 @@
           <td>{{ enrollment.userId }}</td>
           <td>{{ enrollment.courseId }}</td>
           <td>{{ formatDate(enrollment.enrolledAt) }}</td>
-          <td class="actions" *ngIf="canManageEnrollments()">
-            <button type="button" class="icon-button edit" (click)="openEditModal(enrollment)" title="Edit">✏️</button>
-            <button type="button" class="icon-button delete" (click)="confirmDelete(enrollment.id)" title="Delete">🗑️</button>
+          <td class="actions" *ngIf="hasActionsEnrollments()">
+            <button type="button" class="icon-button edit" (click)="openEditModal(enrollment)" title="Edit" *ngIf="canEditEnrollment()">✏️</button>
+            <button type="button" class="icon-button delete" (click)="confirmDelete(enrollment.id)" title="Delete" *ngIf="canDeleteEnrollment()">🗑️</button>
           </td>
         </tr>
       </tbody>

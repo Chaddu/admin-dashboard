@@ -1,7 +1,7 @@
 <div class="page-container">
   <div class="page-header">
     <h1>Courses</h1>
-    <button type="button" class="primary-button" (click)="toggleAddModal(true)">Add Course</button>
+    <button type="button" class="primary-button" (click)="toggleAddModal(true)" *ngIf="canAddCourse()">Add Course</button>
   </div>
 
   <div *ngIf="isLoading()" class="loading">Loading courses...</div>
@@ -23,7 +23,7 @@
           <th>Title</th>
           <th>Description</th>
           <th>Instructor ID</th>
-          <th>Actions</th>
+          <th *ngIf="hasActions()">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -32,9 +32,9 @@
           <td>{{ course.title }}</td>
           <td>{{ course.description }}</td>
           <td>{{ course.instructorId }}</td>
-          <td class="actions">
-            <button type="button" class="icon-button edit" (click)="openEditModal(course)" title="Edit">✏️</button>
-            <button type="button" class="icon-button delete" (click)="deleteCourse(course.id)" title="Delete">🗑️</button>
+          <td class="actions" *ngIf="hasActions()">
+            <button type="button" class="icon-button edit" (click)="openEditModal(course)" title="Edit" *ngIf="canEditCourse()">✏️</button>
+            <button type="button" class="icon-button delete" (click)="deleteCourse(course.id)" title="Delete" *ngIf="canDeleteCourse()">🗑️</button>
           </td>
         </tr>
       </tbody>

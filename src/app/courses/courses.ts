@@ -58,6 +58,46 @@ export class Courses implements OnInit {
     });
   }
 
+  private getCurrentUser(): { id: number; role: number } | null {
+    const token = localStorage.getItem('jwtToken');
+    if (!token) return null;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const roleString = payload.role || payload.userRole || '';
+      let role = 0;
+      if (roleString === 'Student' || roleString === '0') role = 0;
+      else if (roleString === 'Instructor' || roleString === '1') role = 1;
+      else if (roleString === 'Admin' || roleString === '2') role = 2;
+      return {
+        id: parseInt(payload.sub || payload.id || payload.userId || '0', 10),
+        role: role
+      };
+    } catch (e) {
+      console.error('Error decoding JWT:', e);
+      return null;
+    }
+  }
+
+  canEditCourse(): boolean {
+    const currentUser = this.getCurrentUser();
+    return currentUser ? currentUser.role >= 1 : false; // Instructor (1) and Admin (2)
+  }
+
+  canDeleteCourse(): boolean {
+    const currentUser = this.getCurrentUser();
+    return currentUser ? currentUser.role === 2 : false; // Admin only
+  }
+
+  canAddCourse(): boolean {
+    const currentUser = this.getCurrentUser();
+    return currentUser ? currentUser.role >= 1 : false; // Instructor (1) and Admin (2)
+  }
+
+  hasActions(): boolean {
+    return this.canEditCourse() || this.canDeleteCourse();
+  }
+
   constructor(private http: HttpClient) {}
 
   ngOnInit() {

@@ -101,6 +101,23 @@ export class Enrollments implements OnInit {
     return currentUser ? currentUser.role === 1 : false;
   }
 
+  private isCurrentUserAdmin(): boolean {
+    const currentUser = this.getCurrentUser();
+    return currentUser ? currentUser.role === 2 : false;
+  }
+
+  canEditEnrollment(): boolean {
+    return this.isCurrentUserAdmin();
+  }
+
+  canDeleteEnrollment(): boolean {
+    return this.isCurrentUserAdmin();
+  }
+
+  hasActionsEnrollments(): boolean {
+    return this.isCurrentUserAdmin();
+  }
+
   private loadInstructorCourses(instructorId: number) {
     this.http.get<Result<any[]>>(`${this.baseUrl}/Course`, {
       headers: this.getHeaders(),
@@ -311,7 +328,7 @@ export class Enrollments implements OnInit {
       courseId: parseInt(this.editCourseId),
     };
 
-    this.http.put<Result<any>>(`${this.baseUrl}/Enrollment/${this.editingEnrollment.id}`, enrollmentData, {
+    this.http.patch<Result<any>>(`${this.baseUrl}/Enrollment/${this.editingEnrollment.id}`, enrollmentData, {
       headers: this.getHeaders(),
     }).subscribe({
       next: (response) => {

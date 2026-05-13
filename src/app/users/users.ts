@@ -125,6 +125,11 @@ export class Users implements OnInit {
     return currentUser ? currentUser.role === 1 : false;
   }
 
+  canChangeRole(): boolean {
+    const currentUser = this.getCurrentUser();
+    return currentUser ? currentUser.role === 2 : false; // Only admins can change roles
+  }
+
   constructor(private http: HttpClient, private router: Router) {}
 
   ngOnInit() {
@@ -225,6 +230,14 @@ export class Users implements OnInit {
     }
     if (!this.newPassword.trim()) {
       this.submitError.set('Password is required');
+      return;
+    }
+    if (this.newPassword.length < 8 || this.newPassword.length > 32) {
+      this.submitError.set('Password must be between 8 and 32 characters long');
+      return;
+    }
+    if (!this.newEmail.toLowerCase().endsWith('@gmail.com')) {
+      this.submitError.set('Email must end with @gmail.com');
       return;
     }
 
@@ -490,13 +503,20 @@ export class Users implements OnInit {
     this.editError.set('');
     this.editMessage.set('');
 
-    const userData = {
+    const currentUser = this.getCurrentUser();
+    const isAdmin = currentUser ? currentUser.role === 2 : false;
+
+    const userData: any = {
       username: this.editUsername,
       email: this.editEmail,
-      role: parseInt(this.editRole),
     };
 
-    this.http.put<Result<any>>(`${this.baseUrl}/User/${this.editingUser.id}`, userData, {
+    // Only include role if user is admin
+    if (isAdmin) {
+      userData.role = parseInt(this.editRole);
+    }
+
+    this.http.patch<Result<any>>(`${this.baseUrl}/User/${this.editingUser.id}`, userData, {
       headers: this.getHeaders(),
     }).subscribe({
       next: (response) => {

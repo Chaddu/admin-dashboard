@@ -109,16 +109,14 @@ export class Dashboard implements OnInit {
 
     // Token exists, check if user is admin
     if (currentUser.role !== 2) {
-      // Not an admin, redirect to appropriate page
+      // Not an admin, show locked dashboard screen
       this.isAdmin.set(false);
       this.isLoading.set(false);
-      if (currentUser.role === 0) {
-        // Student - redirect to users page
-        this.router.navigate(['/users']);
-      } else if (currentUser.role === 1) {
-        // Instructor - redirect to users page for profile
-        this.router.navigate(['/users']);
-      }
+      this.route.fragment.subscribe((fragment) => {
+        if (fragment === 'login') {
+          this.toggleLoginModal(true);
+        }
+      });
       return;
     }
 
@@ -288,6 +286,16 @@ export class Dashboard implements OnInit {
 
     if (!this.newUsername.trim() || !this.newEmail.trim() || !this.newPassword.trim()) {
       this.submitError = 'Username, email, and password are required.';
+      return;
+    }
+
+    if (this.newPassword.length < 8 || this.newPassword.length > 32) {
+      this.submitError = 'Password must be between 8 and 32 characters long.';
+      return;
+    }
+
+    if (!this.newEmail.toLowerCase().endsWith('@gmail.com')) {
+      this.submitError = 'Email must end with @gmail.com';
       return;
     }
 
