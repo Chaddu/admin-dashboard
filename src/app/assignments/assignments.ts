@@ -68,6 +68,14 @@ export class Assignments implements OnInit {
   deleteModalOpen = signal(false);
   deletingAssignmentId: number | null = null;
 
+  // Search functionality
+  searchById = '';
+  searchByCourseId = '';
+  searchResults = signal<AssignmentResponse[]>([]);
+  searchError = signal('');
+  isSearching = signal(false);
+  showSearchResults = signal(false);
+
   private getHeaders(): HttpHeaders {
     const token = localStorage.getItem('jwtToken') || '';
     return new HttpHeaders({
@@ -76,7 +84,7 @@ export class Assignments implements OnInit {
     });
   }
 
-  private getCurrentUser(): { id: number; role: number } | null {
+  getCurrentUser(): { id: number; role: number } | null {
     const token = localStorage.getItem('jwtToken');
     if (!token) return null;
 
@@ -124,6 +132,85 @@ export class Assignments implements OnInit {
 
   hasActions(): boolean {
     return this.canEditAssignment() || this.canDeleteAssignment();
+  }
+
+  // Search methods
+  searchAssignmentById() {
+    const idStr = String(this.searchById).trim();
+    if (!idStr) {
+      this.searchError.set('Please enter an assignment ID');
+      return;
+    }
+
+    const id = parseInt(idStr, 10);
+    if (isNaN(id) || id <= 0) {
+      this.searchError.set('Assignment ID must be a positive number');
+      return;
+    }
+
+    this.isSearching.set(true);
+    this.searchError.set('');
+    this.searchResults.set([]);
+    this.http.get<Result<AssignmentResponse>>(`${this.baseUrl}/Assignment/${id}`, {
+      headers: this.getHeaders(),
+    }).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.searchResults.set([response.data]);
+          this.showSearchResults.set(true);
+        } else {
+          this.searchError.set(response.message || 'Assignment not found');
+        }
+        this.isSearching.set(false);
+      },
+      error: (err) => {
+        this.searchError.set(err.error?.message || 'Error searching for assignment');
+        this.isSearching.set(false);
+      },
+    });
+  }
+
+  searchAssignmentsByCourseId() {
+    const courseIdStr = String(this.searchByCourseId).trim();
+    if (!courseIdStr) {
+      this.searchError.set('Please enter a course ID');
+      return;
+    }
+
+    const courseId = parseInt(courseIdStr, 10);
+    if (isNaN(courseId) || courseId <= 0) {
+      this.searchError.set('Course ID must be a positive number');
+      return;
+    }
+
+    this.isSearching.set(true);
+    this.searchError.set('');
+    this.searchResults.set([]);
+    this.http.get<Result<AssignmentResponse[]>>(`${this.baseUrl}/Assignment/course/${courseId}`, {
+      headers: this.getHeaders(),
+    }).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.searchResults.set(response.data);
+          this.showSearchResults.set(true);
+        } else {
+          this.searchError.set(response.message || 'No assignments found for this course');
+        }
+        this.isSearching.set(false);
+      },
+      error: (err) => {
+        this.searchError.set(err.error?.message || 'Error searching for assignments');
+        this.isSearching.set(false);
+      },
+    });
+  }
+
+  clearSearchResults() {
+    this.showSearchResults.set(false);
+    this.searchResults.set([]);
+    this.searchError.set('');
+    this.searchById = '';
+    this.searchByCourseId = '';
   }
 
   private loadInstructorCourses(instructorId: number) {

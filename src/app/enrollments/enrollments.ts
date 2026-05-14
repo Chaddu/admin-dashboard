@@ -55,6 +55,15 @@ export class Enrollments implements OnInit {
   deleteModalOpen = signal(false);
   deletingEnrollmentId: number | null = null;
 
+  // Search functionality
+  searchById = '';
+  searchByCourseId = '';
+  searchByUserId = '';
+  searchResults = signal<EnrollmentResponse[]>([]);
+  searchError = signal('');
+  isSearching = signal(false);
+  showSearchResults = signal(false);
+
   private getHeaders(): HttpHeaders {
     const token = localStorage.getItem('jwtToken') || '';
     return new HttpHeaders({
@@ -63,7 +72,7 @@ export class Enrollments implements OnInit {
     });
   }
 
-  private getCurrentUser(): { id: number; role: number } | null {
+  getCurrentUser(): { id: number; role: number } | null {
     const token = localStorage.getItem('jwtToken');
     console.log('JWT Token:', token);
     if (!token) return null;
@@ -116,6 +125,136 @@ export class Enrollments implements OnInit {
 
   hasActionsEnrollments(): boolean {
     return this.isCurrentUserAdmin();
+  }
+
+  // Search methods
+  searchEnrollmentById() {
+    const idStr = String(this.searchById).trim();
+    if (!idStr) {
+      this.searchError.set('Please enter an enrollment ID');
+      return;
+    }
+
+    const id = parseInt(idStr, 10);
+    if (isNaN(id) || id <= 0) {
+      this.searchError.set('Enrollment ID must be a positive number');
+      return;
+    }
+
+    this.isSearching.set(true);
+    this.searchError.set('');
+    this.searchResults.set([]);
+    console.log('Searching for enrollment by ID:', id);
+    this.http.get<Result<EnrollmentResponse>>(`${this.baseUrl}/Enrollment/${id}`, {
+      headers: this.getHeaders(),
+    }).subscribe({
+      next: (response) => {
+        console.log('Search response:', response);
+        if (response.success && response.data) {
+          this.searchResults.set([response.data]);
+          this.showSearchResults.set(true);
+        } else {
+          this.searchError.set(response.message || 'Enrollment not found');
+        }
+        this.isSearching.set(false);
+      },
+      error: (err) => {
+        console.error('Search error:', err);
+        this.searchError.set(err.error?.message || err.message || 'Error searching for enrollment');
+        this.isSearching.set(false);
+      },
+    });
+  }
+
+  searchEnrollmentsByCourseId() {
+    const courseIdStr = String(this.searchByCourseId).trim();
+    if (!courseIdStr) {
+      this.searchError.set('Please enter a course ID');
+      return;
+    }
+
+    const courseId = parseInt(courseIdStr, 10);
+    if (isNaN(courseId) || courseId <= 0) {
+      this.searchError.set('Course ID must be a positive number');
+      return;
+    }
+
+    const currentUser = this.getCurrentUser();
+    if (currentUser && currentUser.role < 1) {
+      this.searchError.set('Only instructors and admins can search by course');
+      return;
+    }
+
+    this.isSearching.set(true);
+    this.searchError.set('');
+    this.searchResults.set([]);
+    console.log('Searching for enrollments by course ID:', courseId);
+    this.http.get<Result<EnrollmentResponse[]>>(`${this.baseUrl}/Enrollment/course/${courseId}`, {
+      headers: this.getHeaders(),
+    }).subscribe({
+      next: (response) => {
+        console.log('Search response:', response);
+        if (response.success && response.data) {
+          this.searchResults.set(response.data);
+          this.showSearchResults.set(true);
+        } else {
+          this.searchError.set(response.message || 'No enrollments found for this course');
+        }
+        this.isSearching.set(false);
+      },
+      error: (err) => {
+        console.error('Search error:', err);
+        this.searchError.set(err.error?.message || err.message || 'Error searching for enrollments');
+        this.isSearching.set(false);
+      },
+    });
+  }
+
+  searchEnrollmentsByUserId() {
+    const userIdStr = String(this.searchByUserId).trim();
+    if (!userIdStr) {
+      this.searchError.set('Please enter a user ID');
+      return;
+    }
+
+    const userId = parseInt(userIdStr, 10);
+    if (isNaN(userId) || userId <= 0) {
+      this.searchError.set('User ID must be a positive number');
+      return;
+    }
+
+    this.isSearching.set(true);
+    this.searchError.set('');
+    this.searchResults.set([]);
+    console.log('Searching for enrollments by user ID:', userId);
+    this.http.get<Result<EnrollmentResponse[]>>(`${this.baseUrl}/Enrollment/user/${userId}`, {
+      headers: this.getHeaders(),
+    }).subscribe({
+      next: (response) => {
+        console.log('Search response:', response);
+        if (response.success && response.data) {
+          this.searchResults.set(response.data);
+          this.showSearchResults.set(true);
+        } else {
+          this.searchError.set(response.message || 'No enrollments found for this user');
+        }
+        this.isSearching.set(false);
+      },
+      error: (err) => {
+        console.error('Search error:', err);
+        this.searchError.set(err.error?.message || err.message || 'Error searching for enrollments');
+        this.isSearching.set(false);
+      },
+    });
+  }
+
+  clearSearchResults() {
+    this.showSearchResults.set(false);
+    this.searchResults.set([]);
+    this.searchError.set('');
+    this.searchById = '';
+    this.searchByCourseId = '';
+    this.searchByUserId = '';
   }
 
   private loadInstructorCourses(instructorId: number) {

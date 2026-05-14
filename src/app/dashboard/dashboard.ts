@@ -289,16 +289,6 @@ export class Dashboard implements OnInit {
       return;
     }
 
-    if (this.newPassword.length < 8 || this.newPassword.length > 32) {
-      this.submitError = 'Password must be between 8 and 32 characters long.';
-      return;
-    }
-
-    if (!this.newEmail.toLowerCase().endsWith('@gmail.com')) {
-      this.submitError = 'Email must end with @gmail.com';
-      return;
-    }
-
     const user = {
       username: this.newUsername.trim(),
       password: this.newPassword,

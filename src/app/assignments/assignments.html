@@ -4,6 +4,59 @@
     <button type="button" class="primary-button" (click)="toggleAddModal(true)" *ngIf="canAddAssignment()">Add Assignment</button>
   </div>
 
+  <!-- Search Section -->
+  <div class="search-section" *ngIf="getCurrentUser() as user">
+    <div class="search-row">
+      <div class="search-group">
+        <label>Search by Assignment ID</label>
+        <div class="search-input-group">
+          <input type="number" [(ngModel)]="searchById" placeholder="Enter assignment ID" min="1" step="1" />
+          <button type="button" class="secondary-button" (click)="searchAssignmentById()" [disabled]="isSearching()">
+            {{ isSearching() ? 'Searching...' : 'Search' }}
+          </button>
+        </div>
+      </div>
+      <div class="search-group">
+        <label>Search by Course ID</label>
+        <div class="search-input-group">
+          <input type="number" [(ngModel)]="searchByCourseId" placeholder="Enter course ID" min="1" step="1" />
+          <button type="button" class="secondary-button" (click)="searchAssignmentsByCourseId()" [disabled]="isSearching()">
+            {{ isSearching() ? 'Searching...' : 'Search' }}
+          </button>
+        </div>
+      </div>
+      <button type="button" class="outline-button" (click)="clearSearchResults()" *ngIf="showSearchResults()">Clear</button>
+    </div>
+    <div *ngIf="searchError()" class="error">{{ searchError() }}</div>
+  </div>
+
+  <!-- Search Results -->
+  <div class="search-results" *ngIf="showSearchResults() && !isSearching()">
+    <h2>Search Results</h2>
+    <div *ngIf="searchResults().length > 0" class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Title</th>
+            <th>Description</th>
+            <th>Due Time</th>
+            <th>Course ID</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let assignment of searchResults()">
+            <td>{{ assignment.id }}</td>
+            <td>{{ assignment.title }}</td>
+            <td>{{ assignment.description }}</td>
+            <td>{{ formatDate(assignment.dueTime) }}</td>
+            <td>{{ assignment.courseId }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   <div *ngIf="isLoading()" class="loading">Loading assignments...</div>
   <div *ngIf="error()" class="error">{{ error() }}</div>
 
@@ -11,11 +64,11 @@
     <p>Please register as a student or instructor to view assignments.</p>
   </div>
 
-  <div *ngIf="!isLoading() && !notAuthorized() && filteredAssignments().length === 0" class="empty-state">
+  <div *ngIf="!isLoading() && !notAuthorized() && filteredAssignments().length === 0 && !showSearchResults()" class="empty-state">
     No assignments found. Add an assignment to get started.
   </div>
 
-  <div class="table-container" *ngIf="!isLoading() && filteredAssignments().length > 0">
+  <div class="table-container" *ngIf="!isLoading() && filteredAssignments().length > 0 && !showSearchResults()">
     <table class="data-table">
       <thead>
         <tr>

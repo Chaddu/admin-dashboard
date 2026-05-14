@@ -50,6 +50,14 @@ export class Courses implements OnInit {
   editError = signal('');
   editMessage = signal('');
 
+  // Search functionality
+  searchById = '';
+  searchByInstructorId = '';
+  searchResults = signal<CourseResponse[]>([]);
+  searchError = signal('');
+  isSearching = signal(false);
+  showSearchResults = signal(false);
+
   private getHeaders(): HttpHeaders {
     const token = localStorage.getItem('jwtToken') || '';
     return new HttpHeaders({
@@ -58,7 +66,7 @@ export class Courses implements OnInit {
     });
   }
 
-  private getCurrentUser(): { id: number; role: number } | null {
+  getCurrentUser(): { id: number; role: number } | null {
     const token = localStorage.getItem('jwtToken');
     if (!token) return null;
 
@@ -96,6 +104,85 @@ export class Courses implements OnInit {
 
   hasActions(): boolean {
     return this.canEditCourse() || this.canDeleteCourse();
+  }
+
+  // Search methods
+  searchCourseById() {
+    const idStr = String(this.searchById).trim();
+    if (!idStr) {
+      this.searchError.set('Please enter a course ID');
+      return;
+    }
+
+    const id = parseInt(idStr, 10);
+    if (isNaN(id) || id <= 0) {
+      this.searchError.set('Course ID must be a positive number');
+      return;
+    }
+
+    this.isSearching.set(true);
+    this.searchError.set('');
+    this.searchResults.set([]);
+    this.http.get<Result<CourseResponse>>(`${this.baseUrl}/Course/${id}`, {
+      headers: this.getHeaders(),
+    }).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.searchResults.set([response.data]);
+          this.showSearchResults.set(true);
+        } else {
+          this.searchError.set(response.message || 'Course not found');
+        }
+        this.isSearching.set(false);
+      },
+      error: (err) => {
+        this.searchError.set(err.error?.message || 'Error searching for course');
+        this.isSearching.set(false);
+      },
+    });
+  }
+
+  searchCoursesByInstructorId() {
+    const instructorIdStr = String(this.searchByInstructorId).trim();
+    if (!instructorIdStr) {
+      this.searchError.set('Please enter an instructor ID');
+      return;
+    }
+
+    const instructorId = parseInt(instructorIdStr, 10);
+    if (isNaN(instructorId) || instructorId <= 0) {
+      this.searchError.set('Instructor ID must be a positive number');
+      return;
+    }
+
+    this.isSearching.set(true);
+    this.searchError.set('');
+    this.searchResults.set([]);
+    this.http.get<Result<CourseResponse[]>>(`${this.baseUrl}/Course/instructor/${instructorId}`, {
+      headers: this.getHeaders(),
+    }).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.searchResults.set(response.data);
+          this.showSearchResults.set(true);
+        } else {
+          this.searchError.set(response.message || 'No courses found for this instructor');
+        }
+        this.isSearching.set(false);
+      },
+      error: (err) => {
+        this.searchError.set(err.error?.message || 'Error searching for courses');
+        this.isSearching.set(false);
+      },
+    });
+  }
+
+  clearSearchResults() {
+    this.showSearchResults.set(false);
+    this.searchResults.set([]);
+    this.searchError.set('');
+    this.searchById = '';
+    this.searchByInstructorId = '';
   }
 
   constructor(private http: HttpClient) {}
